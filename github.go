@@ -37,8 +37,8 @@ var client = &http.Client{
 	Timeout: 10 * time.Second,
 }
 
-func NewGitHubRequest(path string) (*http.Request, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/%s"), nil)
+func NewGitHubRequest(url string) (*http.Request, error) {
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func NewGitHubRequest(path string) (*http.Request, error) {
 }
 
 func FetchCommits(repo string) ([]CommitIndex, error) {
-	req, err := NewGitHubRequest(fmt.Sprintf("repos/%s/commits", repo))
+	req, err := NewGitHubRequest(fmt.Sprintf("https://api.github.com/repos/%s/commits", repo))
 	if err != nil {
 		return nil, err
 	}
@@ -69,4 +69,27 @@ func FetchCommits(repo string) ([]CommitIndex, error) {
 	}
 
 	return list, nil
+}
+
+func FetchCommit(url string) (*CommitData, error) {
+	req, err := NewGitHubRequest(url)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	var commit CommitData
+
+	err = json.NewDecoder(resp.Body).Decode(&commit)
+	if err != nil {
+		return nil, err
+	}
+
+	return &commit, nil
 }
