@@ -33,12 +33,18 @@ func main() {
 
 	defer database.Close()
 
+	log.Println("Rendering index...")
+
+	err = RenderIndex()
+	log.MustFail(err)
+
 	log.Println("Preparing router...")
 	r := chi.NewRouter()
 
 	r.Use(middleware.Recoverer)
 	r.Use(log.Middleware())
 
+	r.Get("/", HandleIndex)
 	r.Get("/{feed}", HandleFeed)
 	r.Get("/{feed}/{format}", HandleFeed)
 
