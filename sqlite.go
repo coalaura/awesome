@@ -7,13 +7,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/coalaura/schgo"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const DatabasePath = "awesome.db"
+const DatabasePath = "data/awesome.db"
 
 type Database struct {
 	*sql.DB
@@ -28,6 +30,12 @@ type StoredCommit struct {
 }
 
 func LoadDatabase() (*Database, error) {
+	dir := filepath.Dir(DatabasePath)
+
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		os.MkdirAll(dir, 0755)
+	}
+
 	dsn := fmt.Sprintf("%s?_journal_mode=WAL&_busy_timeout=5000&_sync=NORMAL", DatabasePath)
 
 	conn, err := sql.Open("sqlite3", dsn)
