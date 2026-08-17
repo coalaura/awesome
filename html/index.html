@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="color-scheme" content="dark">
+		<title>awesome feeds</title>
+		<link rel="icon"
+			href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='2' fill='%231d2021'/><circle cx='4.5' cy='11.5' r='1.5' fill='%23fe8019'/><path d='M3 7.5a5.5 5.5 0 0 1 5.5 5.5M3 4a9 9 0 0 1 9 9' stroke='%23fe8019' stroke-width='1.8' fill='none' stroke-linecap='round'/></svg>">
+		<link rel="stylesheet" href="/style.css">
+	</head>
+	<body>
+		<main>
+			<header>
+				<h1>awesome<span>feeds</span></h1>
+				<p>rss, atom and json feeds for links added to awesome lists.</p>
+			</header>
+
+			<ul class="feed-list">
+				{{range .Feeds}}
+					<li class="feed-card">
+						<div class="feed-info">
+							<a class="feed-name" href="/{{.Type}}">{{.Type}}</a>
+							<a class="repo" href="https://github.com/{{.Repository}}">{{.Repository}}@{{.Branch}}</a>
+						</div>
+						<div class="formats" aria-label="{{.Type}} feed formats">
+							<a href="/{{.Type}}/rss">rss</a>
+							<a href="/{{.Type}}/atom">atom</a>
+							<a href="/{{.Type}}/json">json</a>
+						</div>
+					</li>
+				{{else}}
+					<li class="empty">no feeds configured</li>
+				{{end}}
+			</ul>
+
+			<footer>refreshed every {{.Interval}}</footer>
+		</main>
+	</body>
+</html>

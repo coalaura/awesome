@@ -45,7 +45,8 @@ func main() {
 	r.Use(log.Middleware())
 
 	r.Get("/", HandleIndex)
-	r.Get("/{feed}", HandleFeed)
+	r.Get("/style.css", HandleStylesheet)
+	r.Get("/{feed}", HandleFeedIndex)
 	r.Get("/{feed}/{format}", HandleFeed)
 
 	addr := config.Addr()

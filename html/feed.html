@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="color-scheme" content="dark">
+		<title>awesome {{.Feed.Type}} additions</title>
+		<link rel="icon"
+			href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='2' fill='%231d2021'/><circle cx='4.5' cy='11.5' r='1.5' fill='%23fe8019'/><path d='M3 7.5a5.5 5.5 0 0 1 5.5 5.5M3 4a9 9 0 0 1 9 9' stroke='%23fe8019' stroke-width='1.8' fill='none' stroke-linecap='round'/></svg>">
+		<link rel="stylesheet" href="/style.css">
+	</head>
+	<body>
+		<main>
+			<header class="feed-header">
+				<a class="back" href="/">awesome<span>feeds</span></a>
+
+				<div class="feed-title">
+					<h1 class="feed-heading"><span>#</span>{{.Feed.Type}}</h1>
+					<a class="repo" href="https://github.com/{{.Feed.Repository}}">{{.Feed.Repository}}@{{.Feed.Branch}}</a>
+				</div>
+
+				<div class="formats" aria-label="{{.Feed.Type}} feed formats">
+					<a href="/{{.Feed.Type}}/rss">rss</a>
+					<a href="/{{.Feed.Type}}/atom">atom</a>
+					<a href="/{{.Feed.Type}}/json">json</a>
+				</div>
+			</header>
+
+			<section class="entry-list" aria-label="Recent additions">
+				{{range .Entries}}
+					<article class="entry">
+						<a class="entry-title" href="{{.URL}}">{{.Name}}</a>
+						<a class="entry-url" href="{{.URL}}">{{.URL}}</a>
+
+						<div class="entry-meta">
+							<time>added {{FormatDate .CreatedAt}}</time>
+							<span>in <a href="{{.CommitURL}}"><code>{{.ShortSHA}}</code></a></span>
+							{{if .Author}}
+							<span>by <a href="{{.AuthorURL}}">{{.Author}}</a></span>
+							{{end}}
+						</div>
+
+						{{if .Message}}
+						<p class="entry-message">{{.Message}}</p>
+						{{end}}
+					</article>
+				{{else}}
+					<p class="empty">no additions have been found yet</p>
+				{{end}}
+			</section>
+
+			<footer>refreshed every {{.Interval}}</footer>
+		</main>
+	</body>
+</html>

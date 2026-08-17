@@ -40,8 +40,9 @@ With the example configuration:
 
 | Feed | URL |
 | --- | --- |
-| RSS | `http://localhost:5883/go` or `http://localhost:5883/go/rss` |
+| Feed | `http://localhost:5883/go` |
+| RSS | `http://localhost:5883/go/rss` |
 | Atom | `http://localhost:5883/go/atom` |
-| JSON Feed | `http://localhost:5883/go/json` |
+| JSON | `http://localhost:5883/go/json` |
 
 Visit `http://localhost:5883/` to see configured feeds.
