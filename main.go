@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"sync"
 
 	"github.com/coalaura/plain"
 	"github.com/go-chi/chi/v5"
@@ -46,6 +48,15 @@ func main() {
 		Handler: r,
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var updates sync.WaitGroup
+
+	updates.Go(func() {
+		RunFeedUpdates(ctx, config.Feeds)
+	})
+
 	go func() {
 		log.Printf("Listening at http://localhost%s/\n", addr)
 
@@ -59,5 +70,9 @@ func main() {
 
 	log.Warnln("Shutting down...")
 
+	cancel()
+
 	server.Close()
+
+	updates.Wait()
 }

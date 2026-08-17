@@ -7,6 +7,32 @@ type MarkdownURL struct {
 	URL  string `json:"url"`
 }
 
+func NewMarkdownURLs(addedLines, removedLines []string) []MarkdownURL {
+	removedURLs := make(map[string]int)
+
+	for _, line := range removedLines {
+		for _, url := range AppendSimpleMarkdownURLs(nil, line) {
+			removedURLs[url.URL]++
+		}
+	}
+
+	urls := make([]MarkdownURL, 0)
+
+	for _, line := range addedLines {
+		for _, url := range AppendSimpleMarkdownURLs(nil, line) {
+			if removedURLs[url.URL] > 0 {
+				removedURLs[url.URL]--
+
+				continue
+			}
+
+			urls = append(urls, url)
+		}
+	}
+
+	return urls
+}
+
 func AppendSimpleMarkdownURLs(urls []MarkdownURL, input string) []MarkdownURL {
 	var index int
 

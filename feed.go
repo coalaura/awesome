@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"slices"
 	"strings"
 	"time"
@@ -12,35 +14,78 @@ type FeedConfig struct {
 	Branch     string `yaml:"branch"`
 }
 
-func UpdateFeed(feed FeedConfig) error {
+const FeedUpdateInterval = 10 * time.Minute
+
+func RunFeedUpdates(ctx context.Context, feeds []FeedConfig) {
+	updateAll := func() bool {
+		for _, feed := range feeds {
+			if err := ctx.Err(); err != nil {
+				return false
+			}
+
+			err := UpdateFeed(ctx, feed)
+			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					return false
+				}
+
+				log.Warnln(err)
+			}
+		}
+
+		return true
+	}
+
+	if !updateAll() {
+		return
+	}
+
+	ticker := time.NewTicker(FeedUpdateInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if !updateAll() {
+				return
+			}
+		}
+	}
+}
+
+func UpdateFeed(ctx context.Context, feed FeedConfig) error {
 	log.Printf("Updating %s feed...\n", feed.Type)
 
-	sha, err := database.GetLatestCommitSha(feed.Type)
+	latestSHA, err := database.GetLatestCommitSha(feed.Type)
 	if err != nil {
 		return err
 	}
 
-	if sha == "" {
-		sha = feed.Branch
-	}
-
-	list, err := FetchCommits(feed.Repository, sha)
+	list, err := FetchCommits(ctx, feed.Repository, feed.Branch)
 	if err != nil {
 		return err
+	}
+
+	if latestSHA != "" {
+		for index, commit := range list {
+			if commit.SHA == latestSHA {
+				list = list[:index]
+
+				break
+			}
+		}
 	}
 
 	slices.Reverse(list) // new2old -> old2new
 
 	for _, commit := range list {
-		if commit.SHA == sha {
-			continue
-		}
-
 		log.Printf("Updating %s/%s...\n", feed.Repository, commit.SHA)
 
 		now := time.Now()
 
-		data, err := FetchCommit(commit.URL)
+		data, err := FetchCommit(ctx, commit.URL)
 		if err != nil {
 			return err
 		}
@@ -57,21 +102,17 @@ func UpdateFeed(feed FeedConfig) error {
 			}
 		}
 
-		var added []MarkdownURL
+		added := make([]MarkdownURL, 0)
 
 		if patch != "" {
 			hunk, err := ParsePatchHunk(patch)
 			if err != nil {
+				log.Println(patch)
+
 				return err
 			}
 
-			added = make([]MarkdownURL, 0, len(hunk.Added))
-
-			for _, line := range hunk.Added {
-				added = AppendSimpleMarkdownURLs(added, line)
-			}
-		} else {
-			added = make([]MarkdownURL, 0)
+			added = NewMarkdownURLs(hunk.Added, hunk.Removed)
 		}
 
 		err = database.AddNewCommit(feed.Type, commit.SHA, commit.User.Login, message, added, commit.Commit.Author.Date, now)
@@ -79,6 +120,8 @@ func UpdateFeed(feed FeedConfig) error {
 			return err
 		}
 	}
+
+	log.Printf("Finished %s feed update\n", feed.Type)
 
 	return nil
 }

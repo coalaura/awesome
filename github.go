@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -53,8 +54,8 @@ func (c CommitData) GetFile(name string) (CommitFile, bool) {
 	return CommitFile{}, false
 }
 
-func NewGitHubRequest(url string) (*http.Request, error) {
-	req, err := http.NewRequest("GET", url, nil)
+func NewGitHubRequest(ctx context.Context, url string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +65,8 @@ func NewGitHubRequest(url string) (*http.Request, error) {
 	return req, nil
 }
 
-func FetchCommits(repo, sha string) ([]CommitIndex, error) {
-	req, err := NewGitHubRequest(fmt.Sprintf("https://api.github.com/repos/%s/commits?per_page=100&sha=%s", repo, sha))
+func FetchCommits(ctx context.Context, repo, sha string) ([]CommitIndex, error) {
+	req, err := NewGitHubRequest(ctx, fmt.Sprintf("https://api.github.com/repos/%s/commits?per_page=100&path=README.md&sha=%s", repo, sha))
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +88,8 @@ func FetchCommits(repo, sha string) ([]CommitIndex, error) {
 	return list, nil
 }
 
-func FetchCommit(url string) (*CommitData, error) {
-	req, err := NewGitHubRequest(url)
+func FetchCommit(ctx context.Context, url string) (*CommitData, error) {
+	req, err := NewGitHubRequest(ctx, url)
 	if err != nil {
 		return nil, err
 	}

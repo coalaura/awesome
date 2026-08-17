@@ -24,36 +24,74 @@ type PatchHunk struct {
 }
 
 func ParsePatchHunk(patch string) (PatchHunk, error) {
-	header, offset, err := ParsePatchHeader(patch)
-	if err != nil {
-		return PatchHunk{}, err
-	}
-
-	parsed := PatchHunk{
-		Header: header,
-	}
-
-	_, body, hasBody := strings.Cut(patch[offset:], "\n")
-	if !hasBody {
-		body = ""
-	}
+	var parsed PatchHunk
 
 	var (
+		hasHunk  bool
+		header   PatchHeader
 		oldLines int64
 		newLines int64
 	)
 
-	for len(body) > 0 {
-		line, remaining, hasNextLine := strings.Cut(body, "\n")
-		body = remaining
+	finishHunk := func() error {
+		if !hasHunk {
+			return nil
+		}
+
+		if oldLines != header.Old.Lines {
+			return fmt.Errorf(
+				"old hunk line count mismatch: header says %d, found %d",
+				header.Old.Lines,
+				oldLines,
+			)
+		}
+
+		if newLines != header.New.Lines {
+			return fmt.Errorf(
+				"new hunk line count mismatch: header says %d, found %d",
+				header.New.Lines,
+				newLines,
+			)
+		}
+
+		return nil
+	}
+
+	for remaining := patch; len(remaining) > 0; {
+		line, next, _ := strings.Cut(remaining, "\n")
 
 		line = strings.TrimSuffix(line, "\r")
 
-		if line == `\ No newline at end of file` {
-			if !hasNextLine {
-				break
+		remaining = next
+
+		if strings.HasPrefix(line, "@@ ") {
+			err := finishHunk()
+			if err != nil {
+				return PatchHunk{}, err
 			}
 
+			parsedHeader, _, err := ParsePatchHeader(line)
+			if err != nil {
+				return PatchHunk{}, err
+			}
+
+			if parsed.Header == (PatchHeader{}) {
+				parsed.Header = parsedHeader
+			}
+
+			header = parsedHeader
+			hasHunk = true
+			oldLines = 0
+			newLines = 0
+
+			continue
+		}
+
+		if !hasHunk {
+			return PatchHunk{}, errors.New("invalid header prefix")
+		}
+
+		if line == `\ No newline at end of file` {
 			continue
 		}
 
@@ -76,26 +114,11 @@ func ParsePatchHunk(patch string) (PatchHunk, error) {
 		default:
 			return PatchHunk{}, fmt.Errorf("invalid hunk line prefix %q", line[0])
 		}
-
-		if !hasNextLine {
-			break
-		}
 	}
 
-	if oldLines != header.Old.Lines {
-		return PatchHunk{}, fmt.Errorf(
-			"old hunk line count mismatch: header says %d, found %d",
-			header.Old.Lines,
-			oldLines,
-		)
-	}
-
-	if newLines != header.New.Lines {
-		return PatchHunk{}, fmt.Errorf(
-			"new hunk line count mismatch: header says %d, found %d",
-			header.New.Lines,
-			newLines,
-		)
+	err := finishHunk()
+	if err != nil {
+		return PatchHunk{}, err
 	}
 
 	return parsed, nil
