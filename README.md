@@ -46,3 +46,9 @@ With the example configuration:
 | JSON | `http://localhost:5883/go/json` |
 
 Visit `http://localhost:5883/` to see configured feeds.
+
+## Screenshots
+
+![index](.github/index.png)
+
+![listing](.github/feed.png)
