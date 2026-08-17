@@ -13,50 +13,54 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
           - goos: linux
             goarch: amd64
+            zig_target: x86_64-linux-musl
+            runner: ubuntu-latest
           - goos: linux
             goarch: arm64
+            zig_target: aarch64-linux-musl
+            runner: ubuntu-latest
           - goos: windows
             goarch: amd64
+            zig_target: x86_64-windows-gnu
+            runner: ubuntu-latest
           - goos: windows
             goarch: arm64
+            zig_target: aarch64-windows-gnu
+            runner: ubuntu-latest
           - goos: darwin
             goarch: amd64
+            runner: macos-15-intel
           - goos: darwin
             goarch: arm64
+            runner: macos-latest
       fail-fast: false
 
     steps:
     - name: Checkout
       uses: actions/checkout@v6
+    - name: Set up Zig
+      if: matrix.zig_target != ''
+      uses: goto-bus-stop/setup-zig@v2
+      with:
+        version: 0.15.2
 
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
         go-version-file: 'go.mod'
-        cache: false
-
-    - name: Cache Go build and modules
-      uses: actions/cache@v5
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ matrix.goos }}-${{ matrix.goarch }}-${{ hashFiles('**/go.sum', '**/go.mod') }}
-        restore-keys: |
-          ${{ runner.os }}-go-${{ matrix.goos }}-${{ matrix.goarch }}-
 
     - name: Build
       shell: bash
       env:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
-        CGO_ENABLED: 0
+        CGO_ENABLED: 1
       run: |
         mkdir -p bin
         EXT=""
@@ -64,6 +68,16 @@ jobs:
 
         if [[ "$GOOS" == "windows" ]]; then
           EXT=".exe"
+        fi
+        if [[ -n "${{ matrix.zig_target }}" ]]; then
+          export CC="zig cc -target ${{ matrix.zig_target }}"
+          export CXX="zig c++ -target ${{ matrix.zig_target }}"
+
+          if [[ "${{ matrix.zig_target }}" == *"musl"* ]]; then
+            LDFLAGS="-linkmode external -extldflags '-static'"
+          fi
+        elif [[ "$GOOS" == "darwin" ]]; then
+          LDFLAGS="-extldflags=-Wl,-no_warn_duplicate_libraries"
         fi
 
         go build \
