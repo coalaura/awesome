@@ -39,7 +39,8 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(log.Middleware())
 
-	r.Get("/{type}", HandleFeed)
+	r.Get("/{feed}", HandleFeed)
+	r.Get("/{feed}/{format}", HandleFeed)
 
 	addr := config.Addr()
 

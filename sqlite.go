@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -16,6 +17,14 @@ const DatabasePath = "awesome.db"
 
 type Database struct {
 	*sql.DB
+}
+
+type StoredCommit struct {
+	SHA       string
+	Author    string
+	Message   string
+	AddedURLs []MarkdownURL
+	CreatedAt time.Time
 }
 
 func LoadDatabase() (*Database, error) {
@@ -91,9 +100,53 @@ func (d *Database) AddNewCommit(typ, sha, author, message string, added []Markdo
 		author,
 		message,
 		buffer.Bytes(),
-		createdAt,
-		loadedAt,
+		createdAt.Unix(),
+		loadedAt.Unix(),
 	)
 
 	return err
+}
+
+func (d *Database) GetCommitsByType(ctx context.Context, typ string) ([]StoredCommit, error) {
+	rows, err := d.QueryContext(ctx, "SELECT sha, author, message, added_urls, created_at FROM commits WHERE type = ? ORDER BY created_at DESC LIMIT 100", typ)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var results []StoredCommit
+
+	for rows.Next() {
+		var (
+			commit    StoredCommit
+			added     []byte
+			createdAt int64
+		)
+
+		err = rows.Scan(&commit.SHA, &commit.Author, &commit.Message, &added, &createdAt)
+		if err != nil {
+			return nil, err
+		}
+
+		err = json.Unmarshal(added, &commit.AddedURLs)
+		if err != nil {
+			return nil, err
+		}
+
+		commit.CreatedAt = time.Unix(createdAt, 0)
+
+		results = append(results, commit)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }

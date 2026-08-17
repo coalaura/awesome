@@ -33,6 +33,11 @@ func LoadConfig() (*Config, error) {
 				Repository: "avelino/awesome-go",
 				Branch:     "main",
 			},
+			{
+				Type:       "selfhosted",
+				Repository: "awesome-selfhosted/awesome-selfhosted",
+				Branch:     "master",
+			},
 		},
 	}
 
