@@ -1,2 +1,4 @@
 config.yml
 awesome.db
+awesome.db-wal
+awesome.db-shm

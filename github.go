@@ -8,19 +8,25 @@ import (
 )
 
 type CommitIndex struct {
-	SHA    string     `json:"sha"`
-	Commit CommitData `json:"commit"`
+	SHA    string          `json:"sha"`
+	URL    string          `json:"url"`
+	User   CommitUser      `json:"author"`
+	Commit CommitIndexData `json:"commit"`
 }
 
 type CommitIndexData struct {
-	Author CommitAuthor `json:"author"`
-	URL    string       `json:"url"`
+	Author  CommitAuthor `json:"author"`
+	Message string       `json:"message"`
 }
 
 type CommitAuthor struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Date  string `json:"date"`
+	Name  string    `json:"name"`
+	Email string    `json:"email"`
+	Date  time.Time `json:"date"`
+}
+
+type CommitUser struct {
+	Login string `json:"login"`
 }
 
 type CommitData struct {
@@ -37,6 +43,16 @@ var client = &http.Client{
 	Timeout: 10 * time.Second,
 }
 
+func (c CommitData) GetFile(name string) (CommitFile, bool) {
+	for _, file := range c.Files {
+		if file.Filename == name {
+			return file, true
+		}
+	}
+
+	return CommitFile{}, false
+}
+
 func NewGitHubRequest(url string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -48,8 +64,8 @@ func NewGitHubRequest(url string) (*http.Request, error) {
 	return req, nil
 }
 
-func FetchCommits(repo string) ([]CommitIndex, error) {
-	req, err := NewGitHubRequest(fmt.Sprintf("https://api.github.com/repos/%s/commits", repo))
+func FetchCommits(repo, sha string) ([]CommitIndex, error) {
+	req, err := NewGitHubRequest(fmt.Sprintf("https://api.github.com/repos/%s/commits?per_page=100&sha=%s", repo, sha))
 	if err != nil {
 		return nil, err
 	}

@@ -19,7 +19,7 @@ func TestParsePatchHunk(t *testing.T) {
 		t.Fatalf("ParsePatchHunk() error = %v", err)
 	}
 
-	want := Patch{
+	want := PatchHunk{
 		Header: PatchHeader{
 			Old: PatchVersion{
 				StartLine: 10,

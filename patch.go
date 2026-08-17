@@ -17,19 +17,19 @@ type PatchVersion struct {
 	Lines     int64
 }
 
-type Patch struct {
+type PatchHunk struct {
 	Header  PatchHeader
 	Added   []string
 	Removed []string
 }
 
-func ParsePatchHunk(patch string) (Patch, error) {
+func ParsePatchHunk(patch string) (PatchHunk, error) {
 	header, offset, err := ParsePatchHeader(patch)
 	if err != nil {
-		return Patch{}, err
+		return PatchHunk{}, err
 	}
 
-	parsed := Patch{
+	parsed := PatchHunk{
 		Header: header,
 	}
 
@@ -58,7 +58,7 @@ func ParsePatchHunk(patch string) (Patch, error) {
 		}
 
 		if len(line) == 0 {
-			return Patch{}, errors.New("invalid empty hunk line")
+			return PatchHunk{}, errors.New("invalid empty hunk line")
 		}
 
 		switch line[0] {
@@ -74,7 +74,7 @@ func ParsePatchHunk(patch string) (Patch, error) {
 
 			parsed.Removed = append(parsed.Removed, line[1:])
 		default:
-			return Patch{}, fmt.Errorf("invalid hunk line prefix %q", line[0])
+			return PatchHunk{}, fmt.Errorf("invalid hunk line prefix %q", line[0])
 		}
 
 		if !hasNextLine {
@@ -83,7 +83,7 @@ func ParsePatchHunk(patch string) (Patch, error) {
 	}
 
 	if oldLines != header.Old.Lines {
-		return Patch{}, fmt.Errorf(
+		return PatchHunk{}, fmt.Errorf(
 			"old hunk line count mismatch: header says %d, found %d",
 			header.Old.Lines,
 			oldLines,
@@ -91,7 +91,7 @@ func ParsePatchHunk(patch string) (Patch, error) {
 	}
 
 	if newLines != header.New.Lines {
-		return Patch{}, fmt.Errorf(
+		return PatchHunk{}, fmt.Errorf(
 			"new hunk line count mismatch: header says %d, found %d",
 			header.New.Lines,
 			newLines,

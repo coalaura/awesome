@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -40,7 +43,9 @@ func LoadDatabase() (*Database, error) {
 
 	table.Column("type", "TEXT").NotNull()
 	table.Column("sha", "TEXT").NotNull()
-	table.Column("added_repo", "TEXT")
+	table.Column("author", "TEXT").NotNull()
+	table.Column("message", "TEXT").NotNull()
+	table.Column("added_urls", "BLOB").NotNull()
 	table.Column("created_at", "INTEGER").NotNull()
 	table.Column("loaded_at", "INTEGER").NotNull()
 
@@ -54,4 +59,41 @@ func LoadDatabase() (*Database, error) {
 	}
 
 	return &Database{conn}, nil
+}
+
+func (d *Database) GetLatestCommitSha(typ string) (string, error) {
+	var sha string
+
+	err := d.QueryRow("SELECT sha FROM commits WHERE type = ? ORDER BY created_at DESC LIMIT 1", typ).Scan(&sha)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+
+		return "", err
+	}
+
+	return sha, nil
+}
+
+func (d *Database) AddNewCommit(typ, sha, author, message string, added []MarkdownURL, createdAt, loadedAt time.Time) error {
+	var buffer bytes.Buffer
+
+	err := json.NewEncoder(&buffer).Encode(added)
+	if err != nil {
+		return err
+	}
+
+	_, err = d.Exec(
+		"INSERT INTO commits (type, sha, author, message, added_urls, created_at, loaded_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		typ,
+		sha,
+		author,
+		message,
+		buffer.Bytes(),
+		createdAt,
+		loadedAt,
+	)
+
+	return err
 }
