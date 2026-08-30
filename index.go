@@ -138,7 +138,7 @@ func HandleFeedIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	commits, err := database.GetCommitsByType(r.Context(), feed.Type)
+	commits, err := database.GetCommitsByType(r.Context(), feed.Type, feed.Filter)
 	if err != nil {
 		log.Warnf("%s: %v\n", feed.Type, err)
 

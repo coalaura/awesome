@@ -13,9 +13,19 @@ import (
 )
 
 type FeedConfig struct {
-	Type       string `yaml:"type"`
-	Repository string `yaml:"repository"`
-	Branch     string `yaml:"branch"`
+	Type       string     `yaml:"type"`
+	Repository string     `yaml:"repository"`
+	Branch     string     `yaml:"branch"`
+	Filter     FeedFilter `yaml:"filter,omitempty"`
+}
+
+type FeedFilter struct {
+	RepositoryOwner RepositoryOwnerFilter `yaml:"repository_owner,omitempty"`
+}
+
+type RepositoryOwnerFilter struct {
+	Include []string `yaml:"include,omitempty"`
+	Exclude []string `yaml:"exclude,omitempty"`
 }
 
 const FeedUpdateInterval = 10 * time.Minute
@@ -86,11 +96,12 @@ func (f FeedConfig) Build(commits []StoredCommit) *feeds.Feed {
 func RunFeedUpdates(ctx context.Context, feeds []FeedConfig) {
 	updateAll := func() bool {
 		for _, feed := range feeds {
-			if err := ctx.Err(); err != nil {
+			err := ctx.Err()
+			if err != nil {
 				return false
 			}
 
-			err := UpdateFeed(ctx, feed)
+			err = UpdateFeed(ctx, feed)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
 					return false

@@ -27,12 +27,19 @@ feeds:
   - type: go
     repository: avelino/awesome-go
     branch: main
+    filter:
+      repository_owner:
+        exclude:
+          - example-owner
+          - another-owner
   - type: selfhosted
     repository: awesome-selfhosted/awesome-selfhosted
     branch: master
 ```
 
 The service checks configured repositories every 10 minutes. It stores processed commits in `awesome.db`.
+
+The optional `filter.repository_owner` filter only outputs added links that are GitHub repository URLs. Set either `include` or `exclude` to a list of owners; a URL matches if its owner matches any entry in the list. GitHub owner matching is case-insensitive. Filtering does not affect the URLs stored in `awesome.db`.
 
 ## Feeds
 

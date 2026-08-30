@@ -81,6 +81,13 @@ func (c *Config) Validate() error {
 		return errors.New("missing server.github_token")
 	}
 
+	for index, feed := range c.Feeds {
+		ownerFilter := feed.Filter.RepositoryOwner
+		if len(ownerFilter.Include) > 0 && len(ownerFilter.Exclude) > 0 {
+			return fmt.Errorf("feeds[%d].filter.repository_owner cannot set both include and exclude", index)
+		}
+	}
+
 	return nil
 }
 

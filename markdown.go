@@ -23,8 +23,9 @@ func NewMarkdownURLs(addedLines, removedLines []string) []MarkdownURL {
 
 	for _, line := range addedLines {
 		for added := range FindSimpleMarkdownURLs(line) {
-			if i := IndexMatchingMarkdownURL(removed, added); i >= 0 {
-				removed = append(removed[:i], removed[i+1:]...)
+			index := IndexMatchingMarkdownURL(removed, added)
+			if index >= 0 {
+				removed = append(removed[:index], removed[index+1:]...)
 
 				continue
 			}

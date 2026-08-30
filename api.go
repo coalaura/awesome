@@ -17,7 +17,7 @@ func HandleFeed(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	commits, err := database.GetCommitsByType(ctx, feed.Type)
+	commits, err := database.GetCommitsByType(ctx, feed.Type, feed.Filter)
 	if err != nil {
 		log.Warnf("%s: %v\n", feed, err)
 

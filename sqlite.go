@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/coalaura/schgo"
@@ -32,7 +33,8 @@ type StoredCommit struct {
 func LoadDatabase() (*Database, error) {
 	dir := filepath.Dir(DatabasePath)
 
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
 		os.MkdirAll(dir, 0755)
 	}
 
@@ -115,8 +117,13 @@ func (d *Database) AddNewCommit(typ, sha, author, message string, added []Markdo
 	return err
 }
 
-func (d *Database) GetCommitsByType(ctx context.Context, typ string) ([]StoredCommit, error) {
-	rows, err := d.QueryContext(ctx, "SELECT sha, author, message, added_urls, created_at FROM commits WHERE type = ? ORDER BY created_at DESC LIMIT 100", typ)
+func (d *Database) GetCommitsByType(ctx context.Context, typ string, filter FeedFilter) ([]StoredCommit, error) {
+	addedURLs, arguments := buildAddedURLsExpression(filter)
+
+	query := "SELECT sha, author, message, " + addedURLs + ", created_at FROM commits WHERE type = ? ORDER BY created_at DESC LIMIT 100"
+	arguments = append(arguments, typ)
+
+	rows, err := d.QueryContext(ctx, query, arguments...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -157,4 +164,57 @@ func (d *Database) GetCommitsByType(ctx context.Context, typ string) ([]StoredCo
 	}
 
 	return results, nil
+}
+
+func buildAddedURLsExpression(filter FeedFilter) (string, []any) {
+	predicates := make([]string, 0)
+	arguments := make([]any, 0)
+
+	ownerFilter := filter.RepositoryOwner
+	owners := ownerFilter.Include
+	operator := "IN"
+
+	if len(ownerFilter.Exclude) > 0 {
+		owners = ownerFilter.Exclude
+		operator = "NOT IN"
+	}
+
+	if len(owners) > 0 {
+		placeholders := strings.TrimSuffix(strings.Repeat("?,", len(owners)), ",")
+		predicate := "substr(repository_path, 1, instr(repository_path, '/') - 1) COLLATE NOCASE " + operator + " (" + placeholders + ")"
+		predicates = append(predicates, predicate)
+
+		for _, owner := range owners {
+			arguments = append(arguments, owner)
+		}
+	}
+
+	if len(predicates) == 0 {
+		return "added_urls", arguments
+	}
+
+	where := strings.Join(predicates, "\n\t\t\t\t\t\tAND ")
+	expression := `COALESCE((
+					SELECT json_group_array(json(value))
+					FROM (
+						SELECT value
+						FROM (
+							SELECT value, key,
+								CASE
+									WHEN normalized_url LIKE 'https://github.com/%' THEN substr(normalized_url, 20)
+									WHEN normalized_url LIKE 'http://github.com/%' THEN substr(normalized_url, 19)
+								END AS repository_path
+							FROM (
+								SELECT value, key, lower(rtrim(json_extract(value, '$.url'), '/')) AS normalized_url
+								FROM json_each(commits.added_urls)
+							)
+						)
+						WHERE repository_path GLOB '?*/*?'
+							AND repository_path NOT GLOB '*/*/*'
+							AND ` + where + `
+						ORDER BY key
+					)
+				), json('[]'))`
+
+	return expression, arguments
 }
